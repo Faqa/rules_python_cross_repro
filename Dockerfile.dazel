@@ -1,0 +1,21 @@
+FROM debian:10-slim@sha256:61ba33ad17fa49d1dc4e5f09c1d957bad967d8bdebde43f9fd7a255cc3ac595b
+
+RUN echo 'APT::Install-Recommends "false";' >> /etc/apt/apt.conf.d/99_norecommends \
+ && echo 'APT::AutoRemove::RecommendsImportant "false";' >> /etc/apt/apt.conf.d/99_norecommends \
+ && echo 'APT::AutoRemove::SuggestsImportant "false";' >> /etc/apt/apt.conf.d/99_norecommends
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Due to bug in dazel, updating .bazelversion requires you to update a character in this line
+ADD .bazelversion .
+
+# Creating the man pages directory to deal with the slim variants not having it.
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl gnupg \
+ && curl -fsSL https://storage.googleapis.com/www.bazel.build/bazel-release.pub.gpg | gpg --dearmor >bazel-archive-keyring.gpg \
+ && mv bazel-archive-keyring.gpg /usr/share/keyrings/ \
+ && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/bazel-archive-keyring.gpg] https://storage.googleapis.com/bazel-apt stable jdk1.8" | tee /etc/apt/sources.list.d/bazel.list \
+ && apt-get update && apt-get install -y --no-install-recommends bazel=$(cat .bazelversion) \
+ && apt-get purge --auto-remove -y curl gnupg \
+ && rm -rf /etc/apt/sources.list.d/bazel.list \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y python3 && rm -rf /var/lib/apt/lists/*
